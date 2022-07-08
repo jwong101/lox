@@ -3,4 +3,5 @@
 
 #![feature(is_some_with)]
 
+pub mod ast;
 pub mod scanner;
