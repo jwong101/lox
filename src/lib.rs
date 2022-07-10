@@ -4,4 +4,6 @@
 #![feature(is_some_with)]
 
 pub mod ast;
+pub mod error;
+pub mod parser;
 pub mod scanner;
