@@ -98,11 +98,8 @@ impl<'a> Scanner<'a> {
                         ref_iter.next_if(|&ch| ch.is_alphanumeric() || ch == '_')
                     }))
                     .collect();
-                if let Some(keyword) = TokenTy::parse_keyword(&ident) {
-                    Some(self.create_token(keyword))
-                } else {
-                    Some(self.create_token(TokenTy::Ident(ident)))
-                }
+                let keyword = TokenTy::parse_keyword(&ident).unwrap_or(TokenTy::Ident(ident));
+                Some(self.create_token(keyword))
             }
 
             _ => panic!("could not parse tokens at line {}", self.line_num),
@@ -143,9 +140,8 @@ impl Iterator for ScannerIter<'_> {
 
     fn next(&mut self) -> Option<Self::Item> {
         while self.0.chars.peek().is_some() {
-            let token = self.0.scan_token();
-            if token.is_some() {
-                return token;
+            if let Some(token) = self.0.scan_token() {
+                return Some(token);
             }
         }
         None
