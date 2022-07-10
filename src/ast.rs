@@ -3,6 +3,8 @@
 
 use std::fmt::{self, Display};
 
+use crate::scanner::TokenTy;
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct Binary {
     pub left: Box<Expr>,
@@ -43,6 +45,21 @@ impl Display for Literal {
     }
 }
 
+impl TryFrom<TokenTy> for Literal {
+    type Error = &'static str;
+
+    fn try_from(ty: TokenTy) -> Result<Self, Self::Error> {
+        match ty {
+            TokenTy::Str(s) => Ok(Literal::String(s)),
+            TokenTy::Num(num) => Ok(Literal::Number(num)),
+            TokenTy::True => Ok(Literal::Boolean(true)),
+            TokenTy::False => Ok(Literal::Boolean(false)),
+            TokenTy::Nil => Ok(Literal::Nil),
+            _ => Err("invalid literal"),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum UnaryOp {
     Bang,
@@ -67,6 +84,18 @@ impl Display for UnaryOp {
     }
 }
 
+impl TryFrom<TokenTy> for UnaryOp {
+    type Error = &'static str;
+
+    fn try_from(t: TokenTy) -> Result<Self, Self::Error> {
+        match t {
+            TokenTy::Bang => Ok(UnaryOp::Bang),
+            TokenTy::Minus => Ok(UnaryOp::Minus),
+            _ => Err("not a unary operator"),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BinaryOp {
     Plus,
@@ -79,6 +108,25 @@ pub enum BinaryOp {
     Lt,
     Ge,
     Gt,
+}
+
+impl TryFrom<TokenTy> for BinaryOp {
+    type Error = &'static str;
+    fn try_from(value: TokenTy) -> Result<Self, Self::Error> {
+        match value {
+            TokenTy::Plus => Ok(BinaryOp::Plus),
+            TokenTy::Minus => Ok(BinaryOp::Minus),
+            TokenTy::Star => Ok(BinaryOp::Star),
+            TokenTy::Slash => Ok(BinaryOp::Slash),
+            TokenTy::BangEq => Ok(BinaryOp::BangEq),
+            TokenTy::EqEq => Ok(BinaryOp::EqEq),
+            TokenTy::Le => Ok(BinaryOp::Le),
+            TokenTy::Lt => Ok(BinaryOp::Lt),
+            TokenTy::Ge => Ok(BinaryOp::Ge),
+            TokenTy::Gt => Ok(BinaryOp::Gt),
+            _ => Err("not a binary operator"),
+        }
+    }
 }
 
 impl BinaryOp {
