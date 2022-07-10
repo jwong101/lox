@@ -150,8 +150,8 @@ impl Iterator for ScannerIter<'_> {
 
 #[derive(Debug, PartialEq)]
 pub struct Token {
-    line: u64,
-    ty: TokenTy,
+    pub line: u64,
+    pub ty: TokenTy,
 }
 
 impl Token {
