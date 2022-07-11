@@ -139,8 +139,22 @@ impl<I: Iterator<Item = Token>> Parser<I> {
                         | TokenTy::Str(_)
                 )
             })
-            .and_then(|tok| Some(Expr::Literal(tok.ty.try_into().ok()?)))
-            .ok_or("Expected primary expression")
+            .ok_or("couldn't parse literal")
+            .and_then(|tok| Ok(Expr::Literal(tok.ty.try_into()?)))
+            .or_else(|_| {
+                if self
+                    .tokens
+                    .next_if(|tok| tok.ty == TokenTy::LParen)
+                    .is_some()
+                   && let Ok(expr) = self.expression()
+                   && self.tokens.next().is_some_and(|tok| {
+                        tok.ty == TokenTy::RParen
+                    })
+                {
+                    return Ok(Expr::Grouping(Box::new(expr)));
+                }
+                Err("couldn't parse grouping expression")
+            })
     }
 }
 
