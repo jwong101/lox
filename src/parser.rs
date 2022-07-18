@@ -160,6 +160,7 @@ impl<I: Iterator<Item = Token>> Parser<I> {
 
 #[cfg(test)]
 mod test {
+    use pretty_assertions::assert_eq;
     use std::vec;
 
     use crate::ast::{BinaryOp, Literal};
