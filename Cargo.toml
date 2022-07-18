@@ -1,17 +1,18 @@
 [package]
 name = "lox"
-authors = ["Joshua Wong"]
-description = "A simple Lox interpreter"
 version = "0.1.0"
+authors = ["Joshua Wong"]
+categories = ["compilers", "parser-implementations"]
 edition = "2021"
 keywords = ["lox", "interpreter", "language"]
-categories = ["compilers", "parser-implementations"]
+license = "Apache-2.0 OR MIT"
 readme = "README.md"
 repository = "https://github.com/jwong101/lox"
-license = "Apache-2.0 OR MIT"
+description = "A simple Lox interpreter"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 anyhow = "1.0.58"
 clap = { version = "3.2.8", features = ["wrap_help", "derive", "cargo"] }
+thiserror = "1.0.31"
