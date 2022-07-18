@@ -163,7 +163,34 @@ impl Display for BinaryOp {
     }
 }
 
-trait AstVisitor {
+pub trait AstFolder {
+    type Output;
+
+    fn fold_literal_expr(&mut self, expr: &Literal) -> Self::Output;
+    fn fold_binary_expr(&mut self, expr: &Binary) -> Self::Output;
+    fn fold_unary_expr(&mut self, expr: &Unary) -> Self::Output;
+    #[inline]
+    fn fold_grouping_expr(&mut self, expr: &Expr) -> Self::Output {
+        self.fold_expr(expr)
+    }
+    fn fold_expr(&mut self, expr: &Expr) -> Self::Output {
+        match expr {
+            Expr::Binary(b) => self.fold_binary_expr(b),
+            Expr::Literal(l) => self.fold_literal_expr(l),
+            Expr::Unary(u) => self.fold_unary_expr(u),
+            Expr::Grouping(g) => self.fold_expr(g),
+        }
+    }
+}
+
+pub trait AstVisitor {
+    fn visit_literal_expr(&mut self, expr: &Literal);
+    fn visit_binary_expr(&mut self, expr: &Binary);
+    fn visit_unary_expr(&mut self, expr: &Unary);
+    #[inline]
+    fn visit_grouping_expr(&mut self, expr: &Expr) {
+        self.visit_expr(expr);
+    }
     fn visit_expr(&mut self, expr: &Expr) {
         match expr {
             Expr::Literal(literal) => self.visit_literal_expr(literal),
@@ -171,13 +198,6 @@ trait AstVisitor {
             Expr::Unary(unary) => self.visit_unary_expr(unary),
             Expr::Binary(binary) => self.visit_binary_expr(binary),
         }
-    }
-    fn visit_literal_expr(&mut self, expr: &Literal);
-    fn visit_binary_expr(&mut self, expr: &Binary);
-    fn visit_unary_expr(&mut self, expr: &Unary);
-    #[inline]
-    fn visit_grouping_expr(&mut self, expr: &Expr) {
-        self.visit_expr(expr);
     }
 }
 
