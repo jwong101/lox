@@ -218,11 +218,11 @@ impl TokenTy {
     fn parse_keyword(ident: &str) -> Option<Self> {
         match ident {
             "and" => Some(Self::And),
-            "Class" => Some(Self::And),
-            "else" => Some(Self::And),
-            "false" => Some(Self::And),
-            "fun" => Some(Self::And),
-            "for" => Some(Self::And),
+            "Class" => Some(Self::Class),
+            "else" => Some(Self::Else),
+            "false" => Some(Self::False),
+            "fun" => Some(Self::Fun),
+            "for" => Some(Self::For),
             "if" => Some(Self::If),
             "nil" => Some(Self::Nil),
             "or" => Some(Self::Or),
