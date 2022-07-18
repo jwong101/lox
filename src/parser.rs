@@ -146,8 +146,8 @@ impl<I: Iterator<Item = Token>> Parser<I> {
                     .tokens
                     .next_if(|tok| tok.ty == TokenTy::LParen)
                     .is_some()
-                   && let Ok(expr) = self.expression()
-                   && self.tokens.next().is_some_and(|tok| {
+                    && let Ok(expr) = self.expression()
+                    && self.tokens.next().is_some_and(|tok| {
                         tok.ty == TokenTy::RParen
                     })
                 {
