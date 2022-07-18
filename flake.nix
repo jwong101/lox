@@ -30,7 +30,7 @@
         naersk-lib = naersk.lib.${system}.override {
           inherit (toolchain) cargo rustc;
         };
-        pname = "PACKAGE NAME HERE";
+        pname = "rs-lox";
         package = naersk-lib.buildPackage {
           inherit pname;
           root = ./.;
