@@ -1,5 +1,5 @@
 # Copyright 2022 Joshua Wong.
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: Apache-2.0 OR MIT
 
 {
   description = "Rust Project skeleton using Naersk and Fenix";
