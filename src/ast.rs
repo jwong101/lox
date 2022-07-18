@@ -62,15 +62,15 @@ impl TryFrom<TokenTy> for Literal {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum UnaryOp {
-    Bang,
-    Minus,
+    Not,
+    Neg,
 }
 
 impl UnaryOp {
     pub fn as_str(&self) -> &'static str {
         match self {
-            UnaryOp::Bang => "!",
-            UnaryOp::Minus => "-",
+            UnaryOp::Not => "!",
+            UnaryOp::Neg => "-",
         }
     }
 }
@@ -78,8 +78,8 @@ impl UnaryOp {
 impl Display for UnaryOp {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            UnaryOp::Bang => write!(f, "!"),
-            UnaryOp::Minus => write!(f, "-"),
+            UnaryOp::Not => write!(f, "!"),
+            UnaryOp::Neg => write!(f, "-"),
         }
     }
 }
@@ -89,8 +89,8 @@ impl TryFrom<TokenTy> for UnaryOp {
 
     fn try_from(t: TokenTy) -> Result<Self, Self::Error> {
         match t {
-            TokenTy::Bang => Ok(UnaryOp::Bang),
-            TokenTy::Minus => Ok(UnaryOp::Minus),
+            TokenTy::Bang => Ok(UnaryOp::Not),
+            TokenTy::Minus => Ok(UnaryOp::Neg),
             _ => Err("not a unary operator"),
         }
     }
@@ -98,12 +98,12 @@ impl TryFrom<TokenTy> for UnaryOp {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BinaryOp {
-    Plus,
-    Minus,
-    Star,
-    Slash,
-    BangEq,
-    EqEq,
+    Add,
+    Sub,
+    Mul,
+    Div,
+    NotEq,
+    Eq,
     Le,
     Lt,
     Ge,
@@ -114,12 +114,12 @@ impl TryFrom<TokenTy> for BinaryOp {
     type Error = &'static str;
     fn try_from(value: TokenTy) -> Result<Self, Self::Error> {
         match value {
-            TokenTy::Plus => Ok(BinaryOp::Plus),
-            TokenTy::Minus => Ok(BinaryOp::Minus),
-            TokenTy::Star => Ok(BinaryOp::Star),
-            TokenTy::Slash => Ok(BinaryOp::Slash),
-            TokenTy::BangEq => Ok(BinaryOp::BangEq),
-            TokenTy::EqEq => Ok(BinaryOp::EqEq),
+            TokenTy::Plus => Ok(BinaryOp::Add),
+            TokenTy::Minus => Ok(BinaryOp::Sub),
+            TokenTy::Star => Ok(BinaryOp::Mul),
+            TokenTy::Slash => Ok(BinaryOp::Div),
+            TokenTy::BangEq => Ok(BinaryOp::NotEq),
+            TokenTy::EqEq => Ok(BinaryOp::Eq),
             TokenTy::Le => Ok(BinaryOp::Le),
             TokenTy::Lt => Ok(BinaryOp::Lt),
             TokenTy::Ge => Ok(BinaryOp::Ge),
@@ -132,12 +132,12 @@ impl TryFrom<TokenTy> for BinaryOp {
 impl BinaryOp {
     pub fn as_str(&self) -> &'static str {
         match self {
-            BinaryOp::Plus => "+",
-            BinaryOp::Minus => "-",
-            BinaryOp::Star => "*",
-            BinaryOp::Slash => "/",
-            BinaryOp::BangEq => "!=",
-            BinaryOp::EqEq => "==",
+            BinaryOp::Add => "+",
+            BinaryOp::Sub => "-",
+            BinaryOp::Mul => "*",
+            BinaryOp::Div => "/",
+            BinaryOp::NotEq => "!=",
+            BinaryOp::Eq => "==",
             BinaryOp::Le => "<=",
             BinaryOp::Lt => "<",
             BinaryOp::Ge => ">=",
@@ -149,12 +149,12 @@ impl BinaryOp {
 impl Display for BinaryOp {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            BinaryOp::Plus => write!(f, "+"),
-            BinaryOp::Minus => write!(f, "-"),
-            BinaryOp::Star => write!(f, "*"),
-            BinaryOp::Slash => write!(f, "/"),
-            BinaryOp::BangEq => write!(f, "!="),
-            BinaryOp::EqEq => write!(f, "=="),
+            BinaryOp::Add => write!(f, "+"),
+            BinaryOp::Sub => write!(f, "-"),
+            BinaryOp::Mul => write!(f, "*"),
+            BinaryOp::Div => write!(f, "/"),
+            BinaryOp::NotEq => write!(f, "!="),
+            BinaryOp::Eq => write!(f, "=="),
             BinaryOp::Le => write!(f, "<="),
             BinaryOp::Lt => write!(f, "<"),
             BinaryOp::Ge => write!(f, ">="),
@@ -223,7 +223,7 @@ mod test {
         };
         let expr = Expr::Binary(Binary {
             left: Box::new(Expr::Literal(Literal::Number(1.0))),
-            op: BinaryOp::Plus,
+            op: BinaryOp::Add,
             right: Box::new(Expr::Literal(Literal::Number(2.0))),
         });
 
@@ -232,7 +232,7 @@ mod test {
         visitor.output.clear();
 
         let expr = Expr::Unary(Unary {
-            op: UnaryOp::Bang,
+            op: UnaryOp::Not,
             right: Box::new(Expr::Literal(Literal::Boolean(true))),
         });
         visitor.visit_expr(&expr);

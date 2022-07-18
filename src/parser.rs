@@ -181,7 +181,7 @@ mod test {
             statements[0],
             Expr::Binary(Binary {
                 left: Box::new(Expr::Literal(Literal::Number(1.0))),
-                op: BinaryOp::Plus,
+                op: BinaryOp::Add,
                 right: Box::new(Expr::Literal(Literal::Number(2.0))),
             })
         );
