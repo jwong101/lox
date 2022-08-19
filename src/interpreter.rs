@@ -33,6 +33,7 @@ impl PartialOrd for LoxTerm {
             (LoxTerm::Number(n), LoxTerm::Number(m)) => n.partial_cmp(m),
             (LoxTerm::String(s), LoxTerm::String(m)) => s.partial_cmp(m),
             (LoxTerm::Boolean(b), LoxTerm::Boolean(m)) => b.partial_cmp(m),
+            (LoxTerm::Nil, LoxTerm::Nil) => Some(Ordering::Equal),
             _ => None,
         }
     }
@@ -48,32 +49,14 @@ impl LoxTerm {
         }
     }
 
-    fn is_same_type(&self, other: &Self) -> bool {
-        matches!(
-            (self, other),
-            (Self::Boolean(_), Self::Boolean(_))
-                | (Self::String(_), Self::String(_))
-                | (Self::Number(_), Self::Number(_))
-                | (Self::Nil, Self::Nil)
-        )
-    }
-
-    fn try_cmp_with(&self, other: &Self, op: BinaryOp) -> LoxOperation {
-        if self.is_same_type(other) {
-            match op {
-                BinaryOp::Gt => Ok(LoxTerm::Boolean(self > other)),
-                BinaryOp::Ge => Ok(LoxTerm::Boolean(self >= other)),
-                BinaryOp::Lt => Ok(LoxTerm::Boolean(self < other)),
-                BinaryOp::Le => Ok(LoxTerm::Boolean(self <= other)),
-                BinaryOp::Eq => Ok(LoxTerm::Boolean(self == other)),
-                BinaryOp::NotEq => Ok(LoxTerm::Boolean(self != other)),
-                BinaryOp::Add | BinaryOp::Sub | BinaryOp::Mul | BinaryOp::Div => {
-                    Err("invalid comparison operation")
-                }
-            }
-        } else {
-            Err("Cannot compare these types")
-        }
+    fn try_cmp_with(
+        &self,
+        other: &Self,
+        ordering_pred: impl FnOnce(Ordering) -> bool,
+    ) -> LoxOperation {
+        self.partial_cmp(other)
+            .map(|ord| Self::Boolean(ordering_pred(ord)))
+            .ok_or("could not compare types")
     }
 }
 
@@ -138,7 +121,7 @@ impl Neg for LoxTerm {
     fn neg(self) -> Self::Output {
         match self {
             Self::Number(n) => Ok(LoxTerm::Number(-n)),
-            _ => Err("negation only works on numbers"),
+            Self::Nil | Self::String(_) | Self::Boolean(_) => Err("negation only works on numbers"),
         }
     }
 }
@@ -163,12 +146,12 @@ impl AstFolder for Interpreter {
             BinaryOp::Sub => left - right,
             BinaryOp::Mul => left * right,
             BinaryOp::Div => left / right,
-            op @ (BinaryOp::Eq
-            | BinaryOp::Lt
-            | BinaryOp::Le
-            | BinaryOp::NotEq
-            | BinaryOp::Ge
-            | BinaryOp::Gt) => left.try_cmp_with(&right, op),
+            BinaryOp::Eq => left.try_cmp_with(&right, Ordering::is_eq),
+            BinaryOp::NotEq => left.try_cmp_with(&right, Ordering::is_ne),
+            BinaryOp::Gt => left.try_cmp_with(&right, Ordering::is_gt),
+            BinaryOp::Ge => left.try_cmp_with(&right, Ordering::is_ge),
+            BinaryOp::Lt => left.try_cmp_with(&right, Ordering::is_lt),
+            BinaryOp::Le => left.try_cmp_with(&right, Ordering::is_le),
         }
     }
 
