@@ -1,7 +1,10 @@
 // Copyright 2022 Joshua Wong.
 // SPDX-License-Identifier: Apache-2.0 OR MIT
 
-use std::ops::{Add, Div, Mul, Neg, Not, Sub};
+use std::{
+    cmp::Ordering,
+    ops::{Add, Div, Mul, Neg, Not, Sub},
+};
 
 use crate::ast::{AstFolder, Binary, BinaryOp, Literal, Unary, UnaryOp};
 
@@ -18,12 +21,71 @@ pub enum LoxTerm {
     Nil,
 }
 
+impl From<bool> for LoxTerm {
+    fn from(b: bool) -> Self {
+        LoxTerm::Boolean(b)
+    }
+}
+
+impl PartialOrd for LoxTerm {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        match (self, other) {
+            (LoxTerm::Number(n), LoxTerm::Number(m)) => n.partial_cmp(m),
+            (LoxTerm::String(s), LoxTerm::String(m)) => s.partial_cmp(m),
+            (LoxTerm::Boolean(b), LoxTerm::Boolean(m)) => b.partial_cmp(m),
+            _ => None,
+        }
+    }
+}
+
+impl LoxTerm {
+    fn coerce_to_bool(&self) -> bool {
+        match self {
+            Self::Boolean(b) => *b,
+            Self::Number(n) => n.partial_cmp(&0.0).is_some_and(|o| o.is_ne()),
+            Self::String(s) => !s.is_empty(),
+            Self::Nil => false,
+        }
+    }
+
+    fn is_same_type(&self, other: &Self) -> bool {
+        matches!(
+            (self, other),
+            (Self::Boolean(_), Self::Boolean(_))
+                | (Self::String(_), Self::String(_))
+                | (Self::Number(_), Self::Number(_))
+                | (Self::Nil, Self::Nil)
+        )
+    }
+
+    fn try_cmp_with(&self, other: &Self, op: BinaryOp) -> LoxOperation {
+        if self.is_same_type(other) {
+            match op {
+                BinaryOp::Gt => Ok(LoxTerm::Boolean(self > other)),
+                BinaryOp::Ge => Ok(LoxTerm::Boolean(self >= other)),
+                BinaryOp::Lt => Ok(LoxTerm::Boolean(self < other)),
+                BinaryOp::Le => Ok(LoxTerm::Boolean(self <= other)),
+                BinaryOp::Eq => Ok(LoxTerm::Boolean(self == other)),
+                BinaryOp::NotEq => Ok(LoxTerm::Boolean(self != other)),
+                BinaryOp::Add | BinaryOp::Sub | BinaryOp::Mul | BinaryOp::Div => {
+                    Err("invalid comparison operation")
+                }
+            }
+        } else {
+            Err("Cannot compare these types")
+        }
+    }
+}
+
 impl Add for LoxTerm {
     type Output = LoxOperation;
 
     fn add(self, other: LoxTerm) -> Self::Output {
-        match (self, other) {
-            (LoxTerm::Number(n), LoxTerm::Number(m)) => Ok(LoxTerm::Number(n + m)),
+        match (self, &other) {
+            (Self::Number(lhs), Self::Number(rhs)) => Ok(Self::Number(lhs + rhs)),
+            (Self::Number(lhs), Self::String(rhs)) => Ok(Self::String(lhs.to_string() + rhs)),
+            (Self::String(lhs), Self::String(rhs)) => Ok(Self::String(lhs + rhs)),
+            (Self::String(lhs), Self::Number(rhs)) => Ok(Self::String(lhs + &rhs.to_string())),
             _ => Err("invalid addition"),
         }
     }
@@ -34,7 +96,7 @@ impl Sub for LoxTerm {
 
     fn sub(self, other: LoxTerm) -> Self::Output {
         match (self, other) {
-            (LoxTerm::Number(n), LoxTerm::Number(m)) => Ok(LoxTerm::Number(n - m)),
+            (Self::Number(lhs), Self::Number(rhs)) => Ok(Self::Number(lhs - rhs)),
             _ => Err("invalid subtraction"),
         }
     }
@@ -45,7 +107,7 @@ impl Mul for LoxTerm {
 
     fn mul(self, other: LoxTerm) -> Self::Output {
         match (self, other) {
-            (LoxTerm::Number(n), LoxTerm::Number(m)) => Ok(LoxTerm::Number(n * m)),
+            (Self::Number(lhs), Self::Number(rhs)) => Ok(Self::Number(lhs * rhs)),
             _ => Err("invalid multiplication"),
         }
     }
@@ -56,7 +118,7 @@ impl Div for LoxTerm {
 
     fn div(self, other: LoxTerm) -> Self::Output {
         match (self, other) {
-            (LoxTerm::Number(n), LoxTerm::Number(m)) => Ok(LoxTerm::Number(n / m)),
+            (Self::Number(lhs), Self::Number(rhs)) => Ok(Self::Number(lhs / rhs)),
             _ => Err("invalid division"),
         }
     }
@@ -66,10 +128,7 @@ impl Not for LoxTerm {
     type Output = LoxOperation;
 
     fn not(self) -> Self::Output {
-        match self {
-            LoxTerm::Boolean(b) => Ok(LoxTerm::Boolean(!b)),
-            _ => Err("not only works on booleans"),
-        }
+        Ok(Self::Boolean(!self.coerce_to_bool()))
     }
 }
 
@@ -78,7 +137,7 @@ impl Neg for LoxTerm {
 
     fn neg(self) -> Self::Output {
         match self {
-            LoxTerm::Number(n) => Ok(LoxTerm::Number(-n)),
+            Self::Number(n) => Ok(LoxTerm::Number(-n)),
             _ => Err("negation only works on numbers"),
         }
     }
@@ -86,6 +145,15 @@ impl Neg for LoxTerm {
 
 impl AstFolder for Interpreter {
     type Output = LoxOperation;
+
+    fn fold_literal_expr(&mut self, expr: &Literal) -> Self::Output {
+        Ok(match expr {
+            Literal::Number(n) => LoxTerm::Number(*n),
+            Literal::String(s) => LoxTerm::String(s.clone()),
+            Literal::Boolean(b) => LoxTerm::Boolean(*b),
+            Literal::Nil => LoxTerm::Nil,
+        })
+    }
 
     fn fold_binary_expr(&mut self, expr: &Binary) -> Self::Output {
         let left = self.fold_expr(&expr.left)?;
@@ -95,17 +163,13 @@ impl AstFolder for Interpreter {
             BinaryOp::Sub => left - right,
             BinaryOp::Mul => left * right,
             BinaryOp::Div => left / right,
-            _ => unimplemented!(),
+            op @ (BinaryOp::Eq
+            | BinaryOp::Lt
+            | BinaryOp::Le
+            | BinaryOp::NotEq
+            | BinaryOp::Ge
+            | BinaryOp::Gt) => left.try_cmp_with(&right, op),
         }
-    }
-
-    fn fold_literal_expr(&mut self, expr: &Literal) -> Self::Output {
-        Ok(match expr {
-            Literal::Number(n) => LoxTerm::Number(*n),
-            Literal::String(s) => LoxTerm::String(s.clone()),
-            Literal::Boolean(b) => LoxTerm::Boolean(*b),
-            Literal::Nil => LoxTerm::Nil,
-        })
     }
 
     fn fold_unary_expr(&mut self, expr: &Unary) -> Self::Output {
@@ -157,7 +221,63 @@ mod test {
                 op: UnaryOp::Not,
                 right: Box::new(Expr::Literal(Literal::Number(1.0))),
             }),
-            Err("not only works on booleans")
+            Ok(LoxTerm::Boolean(false))
+        );
+    }
+
+    #[test]
+    fn test_cmp() {
+        assert_eq!(
+            Interpreter.fold_binary_expr(&Binary {
+                left: Box::new(Expr::Literal(Literal::Number(1.0))),
+                op: BinaryOp::Eq,
+                right: Box::new(Expr::Literal(Literal::Number(1.0))),
+            }),
+            Ok(LoxTerm::Boolean(true))
+        );
+
+        assert_eq!(
+            Interpreter.fold_binary_expr(&Binary {
+                left: Box::new(Expr::Literal(Literal::Number(1.0))),
+                op: BinaryOp::NotEq,
+                right: Box::new(Expr::Literal(Literal::Number(1.0))),
+            }),
+            Ok(LoxTerm::Boolean(false))
+        );
+
+        assert_eq!(
+            Interpreter.fold_binary_expr(&Binary {
+                left: Box::new(Expr::Literal(Literal::Number(1.0))),
+                op: BinaryOp::Lt,
+                right: Box::new(Expr::Literal(Literal::Number(2.0))),
+            }),
+            Ok(LoxTerm::Boolean(true))
+        );
+
+        assert_eq!(
+            Interpreter.fold_binary_expr(&Binary {
+                left: Box::new(Expr::Literal(Literal::Number(1.0))),
+                op: BinaryOp::Le,
+                right: Box::new(Expr::Literal(Literal::Number(2.0))),
+            }),
+            Ok(LoxTerm::Boolean(true))
+        );
+        assert_eq!(
+            Interpreter.fold_binary_expr(&Binary {
+                left: Box::new(Expr::Literal(Literal::Number(1.0))),
+                op: BinaryOp::Ge,
+                right: Box::new(Expr::Literal(Literal::Number(2.0))),
+            }),
+            Ok(LoxTerm::Boolean(false))
+        );
+
+        assert_eq!(
+            Interpreter.fold_binary_expr(&Binary {
+                left: Box::new(Expr::Literal(Literal::Number(1.0))),
+                op: BinaryOp::Gt,
+                right: Box::new(Expr::Literal(Literal::Number(2.0))),
+            }),
+            Ok(LoxTerm::Boolean(false))
         );
     }
 }
